@@ -1,0 +1,2 @@
+link_id, demand, travel_fare, WTW, PEV, area, speed,
+0, 500, 20, 35, 0.03, 10000, 60,
