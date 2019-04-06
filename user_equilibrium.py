@@ -8,5 +8,3 @@ def get_user_equilibrium_path_flow():
     pass
 
 
-def
-

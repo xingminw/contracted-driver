@@ -22,13 +22,29 @@ class Link(object):
 
 
 class Drivers(object):
-    def __init__(self):
-        pass
+    def __init__(self, drivers_id, number, links_preference=None,
+                 unit_time_cost=None, unit_runs_cost=None):
+        self.drivers_id = drivers_id
+        self.drivers_amount = number
+        self.links_preference = links_preference
+        self.unit_time_cost = unit_time_cost
+        self.unit_runs_cost = unit_runs_cost
 
 
 class Network(object):
-    def __init__(self):
-        pass
+    def __init__(self, links=None, drivers=None):
+        self.links = links
+        self.drivers = drivers
+
+    def add_link(self, link):
+        if self.links is None:
+            self.links = {}
+        self.links[link.link_id] = link
+
+    def add_driver(self, driver):
+        if self.drivers is None:
+            self.drivers = {}
+        self.drivers[driver.drivers_id] = driver
 
 
 
