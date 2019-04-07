@@ -29,7 +29,7 @@ def column_generation_user_equilibrium():
     objective_value_list = []
     previous_objective_function = 0
 
-    for iter_idx in range(15):
+    for iter_idx in range(10):
         temp_path_set_dict = deepcopy(path_set_dict)
         initiate_path_distribution = np.linspace(0, 0, total_paths)
         opt_path_flow, opt_cost_value = get_optimal_path_distribution(path_set_dict,
@@ -45,14 +45,12 @@ def column_generation_user_equilibrium():
             total_paths += (path_num + 1)
             path_set_dict[driver_id].append(optimum_path[driver_id])
 
-        if abs(previous_objective_function - opt_cost_value) < 0.003 * abs(opt_cost_value):
+        if abs(previous_objective_function - opt_cost_value) < 0.002 * abs(opt_cost_value):
             break
         previous_objective_function = opt_cost_value
 
     solution_state = model.get_solution_state(temp_path_set_dict, opt_path_flow, network)
-    plt.figure()
-    plt.plot(objective_value_list, ".-")
-    plt.show()
+    return solution_state
 
 
 def get_optimal_path_distribution(path_set_dict, initiate_path, network):

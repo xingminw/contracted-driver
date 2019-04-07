@@ -112,7 +112,7 @@ def get_link_vehicle_hours(path_set_dict, path_flow_list):
     return link_vehicle_hours.tolist()
 
 
-def get_solution_state(path_set_dict, path_flow_list, network):
+def get_solution_state(path_set_dict, path_flow_list, network, output_figure=False):
     solution_state = {}
     # get the total link flow:
     current_index = 0
@@ -144,10 +144,25 @@ def get_solution_state(path_set_dict, path_flow_list, network):
         base_demand_list.append(link_demand)
         realistic_demand_list.append(link_realistic_demand)
 
-    plt.figure()
-    plt.plot(solution_state["total_link_hours"], ".-")
-    for vehicle_flow in solution_state["vehicle_link_hours"]:
-        plt.plot(vehicle_flow, ".-")
-    plt.show()
+    if output_figure:
+        plt.figure(dpi=200, figsize=[13.5, 7.5])
+        total_width = 0.8
+        n = len(solution_state["vehicle_link_hours"])
+        width = total_width / n
+        x = np.arange(24)
+        x = x - (total_width - width) / 2
+
+        for driver_idx in range(n):
+            plt.bar(x + driver_idx * width, [val for val in solution_state["vehicle_link_hours"][driver_idx]],
+                    width=width, label="Driver Class " + str(driver_idx))
+
+        plt.xlabel("Hour")
+        plt.ylabel("Number of Vehicles")
+
+        plt.xlim([-1, 24])
+        plt.legend()
+        plt.savefig("data/figure/link_distribution.png")
+        plt.close()
+
     return solution_state
 
