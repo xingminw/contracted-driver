@@ -139,7 +139,8 @@ def get_solution_state(path_set_dict, path_flow_list, network):
     for link_id in range(len(link_vehicle_hours)):
         link = network.links[link_id]
         link_demand = link.demand
-        link_realistic_demand, unit_revenue = link.get_link_passenger_demand_and_unit_revenue()
+        link_realistic_demand, unit_revenue = \
+            link.get_link_passenger_demand_and_unit_revenue(link_vehicle_hours[link_id])
         base_demand_list.append(link_demand)
         realistic_demand_list.append(link_realistic_demand)
 

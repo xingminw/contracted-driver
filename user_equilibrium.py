@@ -20,7 +20,7 @@ def equality_constraint(x, start, end, value):
 
 
 def column_generation_user_equilibrium():
-    network = initiate_network(reload=True)
+    network = initiate_network(reload=False)
     path_set_dict = {0: [[0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]],
                      1: [[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]],
                      2: [[1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]]}
