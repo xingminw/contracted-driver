@@ -13,7 +13,7 @@ network_file = os.path.join("data/network.pickle")
 
 
 def initiate_network(reload=False):
-    if (not os.path.exists(network_file)) and (not reload):
+    if (not os.path.exists(network_file)) or reload:
         print("Reload the network information!")
         network = cls.Network()
         network = load_links(network)
@@ -23,7 +23,7 @@ def initiate_network(reload=False):
         sleep(0.1)
         for link_id in tqdm(network.links.keys()):
             link = network.links[link_id]
-            link.prepare_link_revenue_integral(network.get_driver_amount() + 10)
+            link.prepare_link_revenue_integral(network.get_driver_amount() * 2)
         sleep(0.1)
         print("Prepare integral done!")
 

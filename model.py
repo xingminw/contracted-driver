@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def passenger_demand_function(q_b, theta_b, f_b, w_b, beta_b):
@@ -109,3 +110,43 @@ def get_link_vehicle_hours(path_set_dict, path_flow_list):
             link_vehicle_hours += np.array(path) * path_flow_list[current_index]
             current_index += 1
     return link_vehicle_hours.tolist()
+
+
+def get_solution_state(path_set_dict, path_flow_list, network):
+    solution_state = {}
+    # get the total link flow:
+    current_index = 0
+    link_vehicle_hours = np.linspace(0, 0, 24)
+    drivers_vehicle_hours_list = []
+    for driver_id in path_set_dict.keys():
+        driver_path_set = path_set_dict[driver_id]
+        driver_vehicle_hours = np.linspace(0, 0, 24)
+
+        for path in driver_path_set:
+            link_vehicle_hours += np.array(path) * path_flow_list[current_index]
+            driver_vehicle_hours += np.array(path) * path_flow_list[current_index]
+            current_index += 1
+
+        drivers_vehicle_hours_list.append(driver_vehicle_hours.tolist())
+
+    solution_state["total_link_hours"] = link_vehicle_hours.tolist()
+    solution_state["vehicle_link_hours"] = drivers_vehicle_hours_list
+    print(solution_state)
+
+    # get base demand and realistic demand
+    base_demand_list = []
+    realistic_demand_list = []
+    for link_id in range(len(link_vehicle_hours)):
+        link = network.links[link_id]
+        link_demand = link.demand
+        link_realistic_demand, unit_revenue = link.get_link_passenger_demand_and_unit_revenue()
+        base_demand_list.append(link_demand)
+        realistic_demand_list.append(link_realistic_demand)
+
+    plt.figure()
+    plt.plot(solution_state["total_link_hours"], ".-")
+    for vehicle_flow in solution_state["vehicle_link_hours"]:
+        plt.plot(vehicle_flow, ".-")
+    plt.show()
+    return solution_state
+

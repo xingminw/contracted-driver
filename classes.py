@@ -1,5 +1,6 @@
 import model
 import numpy as np
+from scipy.optimize import minimize
 
 
 class Link(object):
@@ -17,6 +18,8 @@ class Link(object):
         self.link_revenue_integral = link_revenue_integral
 
     def get_link_passenger_demand_and_unit_revenue(self, vehicle_hours):
+        if vehicle_hours < 1:
+            vehicle_hours = 1
         link_passenger_demand, unit_revenue = model.get_passenger_demand(self.demand,
                                                                          self.travel_fare, vehicle_hours,
                                                                          self.passenger_elastic_val,
@@ -26,8 +29,8 @@ class Link(object):
 
     def get_link_revenue_integral(self, link_vehicles):
         if link_vehicles > len(self.link_revenue_integral) - 2:
-            print("link revenue not enough!")
-            exit()
+            exceed_num = link_vehicles / (len(self.link_revenue_integral)) + 0.1
+            return exceed_num * self.link_revenue_integral[-1]
         link_veh_int = int(link_vehicles)
         link_veh_frac = link_vehicles - int(link_vehicles)
         integral = self.link_revenue_integral[link_veh_int] * (1 - link_veh_frac) + self.link_revenue_integral[
@@ -130,5 +133,42 @@ class Network(object):
                 total_objective_value += driver_path_cost * path_flow
         return total_objective_value
 
+    def get_optimum_path(self, link_flow):
+        link_revenue_list = []
+        for idx in range(len(link_flow)):
+            link = self.links[idx]
+            passenger_demand, link_revenue =\
+                link.get_link_passenger_demand_and_unit_revenue(link_flow[idx])
+            link_revenue_list.append(link_revenue)
 
+        optimum_path_list = []
+        for drivers_id in self.drivers.keys():
+            drivers = self.drivers[drivers_id]
+            path_tuple = np.linspace(0, 0, 24)
+
+            bounds = []
+            for ibd in range(24):
+                bounds.append((0, 1))
+            bounds_tuple = tuple(bounds)
+
+            solution = minimize(get_drivers_path_cost,
+                                x0=path_tuple, bounds=bounds_tuple,
+                                args=(drivers, link_revenue_list))
+
+            solution_path = solution.x.tolist()
+            optimum_path = []
+            for link_val in solution_path:
+                if link_val > 0.5:
+                    optimum_path.append(1)
+                else:
+                    optimum_path.append(0)
+            optimum_path_list.append(optimum_path)
+        return optimum_path_list
+
+
+def get_drivers_path_cost(path, drivers, revenue_list):
+    path_list = path.tolist()
+    total_revenue = - np.sum(np.array(revenue_list) * np.array(path_list))
+    total_cost = drivers.get_path_cost(path_list) + total_revenue
+    return total_cost
 
