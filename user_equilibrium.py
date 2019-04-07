@@ -11,7 +11,12 @@ def get_user_equilibrium_path_flow():
 
 
 def main():
-    network = initiate_network()
+    network = initiate_network(reload=False)
+    path_set_dict = {0: [[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]],
+                     1: [[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]]}
+    path_flow_dict = [4000, 2000, 500, 500]
 
 
 if __name__ == '__main__':
