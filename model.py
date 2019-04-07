@@ -94,5 +94,18 @@ def get_passenger_demand(travel_demand, travel_fare, vehicle_hours,
     return passenger_demand, unit_revenue
 
 
-def get_link_vehicle_hours(path_set_dict, path_flow_dict):
-    pass
+def get_link_vehicle_hours(path_set_dict, path_flow_list):
+    """
+
+    :param path_set_dict:
+    :param path_flow_list:
+    :return:
+    """
+    current_index = 0
+    link_vehicle_hours = np.linspace(0, 0, 24)
+    for driver_id in path_set_dict.keys():
+        driver_path_set = path_set_dict[driver_id]
+        for path in driver_path_set:
+            link_vehicle_hours += np.array(path) * path_flow_list[current_index]
+            current_index += 1
+    return link_vehicle_hours.tolist()

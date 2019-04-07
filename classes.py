@@ -1,6 +1,5 @@
 import model
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 class Link(object):
@@ -26,7 +25,7 @@ class Link(object):
         return link_passenger_demand, unit_revenue
 
     def get_link_revenue_integral(self, link_vehicles):
-        if link_vehicles > len(self.link_revenue_integral - 2):
+        if link_vehicles > len(self.link_revenue_integral) - 2:
             print("link revenue not enough!")
             exit()
         link_veh_int = int(link_vehicles)
@@ -60,6 +59,24 @@ class Drivers(object):
         self.unit_time_cost = unit_time_cost
         self.unit_runs_cost = unit_runs_cost
 
+    def get_path_cost(self, path):
+        link_based = np.sum(np.array(path) * np.array(self.links_preference))
+        cumulative_time = pow(float(np.sum(path)), 1.2) * self.unit_time_cost
+
+        # count runs
+        runs = 0
+        for idx in range(len(path)):
+            if idx == len(path) - 1:
+                if (path[idx] == 0) and (path[0] == 1):
+                    runs += 1
+            else:
+                if (path[idx] == 0) and (path[idx + 1] == 1):
+                    runs += 1
+        run_cost = runs * self.unit_runs_cost
+
+        total_cost = run_cost + cumulative_time + link_based
+        return total_cost
+
 
 class Network(object):
     def __init__(self, links=None, drivers=None):
@@ -83,6 +100,35 @@ class Network(object):
             amount = drivers.drivers_amount
             total_number += amount
         return total_number
+
+    def get_link_revenue_integral_list(self, link_flow_list):
+        if len(link_flow_list) != 24:
+            print("The length of the link flow is not 24!")
+            exit()
+
+        revenue_integral_list = []
+        for idx in range(len(link_flow_list)):
+            link = self.links[idx]
+            link_revenue_integral = link.get_link_revenue_integral(link_flow_list[idx])
+            revenue_integral_list.append(link_revenue_integral)
+        return revenue_integral_list
+
+    def get_path_distribution_objective_value(self, path_set_dict, path_distribution_list):
+        link_flow = model.get_link_vehicle_hours(path_set_dict, path_distribution_list)
+        link_integral_list = self.get_link_revenue_integral_list(link_flow)
+        link_revenue_total = - np.sum(link_integral_list)
+
+        total_objective_value = link_revenue_total
+
+        path_flow_index = 0
+        for driver_id in path_set_dict.keys():
+            for path in path_set_dict[driver_id]:
+                drivers = self.drivers[driver_id]
+                driver_path_cost = drivers.get_path_cost(path)
+                path_flow = path_distribution_list[path_flow_index]
+                path_flow_index += 1
+                total_objective_value += driver_path_cost * path_flow
+        return total_objective_value
 
 
 
