@@ -32,18 +32,41 @@ def get_passenger_demand(travel_demand, travel_fare, vehicle_hours,
     # here try to get the passenger demand using the fixed point method
     average_trip_duration = 0.15
     vacant_hours = vehicle_hours
+
     while 1:
-        local_current_vacant_hours = vacant_hours
         waiting_time = get_waiting_time(vacant_hours, area=area, nu_b=avg_speed)
         passenger_demand = passenger_demand_function(travel_demand, passenger_demand_elastic,
                                                      travel_fare, waiting_time, waiting_time_weight)
-        vacant_hours = vehicle_hours - passenger_demand * average_trip_duration
-        if vacant_hours < 0:
-            return vehicle_hours / average_trip_duration
-
-        if abs(local_current_vacant_hours - vacant_hours) < 0.1:
+        next_vacant_hours = vehicle_hours - passenger_demand * average_trip_duration
+        if next_vacant_hours < 0:
+            correct_flag = False
             break
-    return passenger_demand
+        vacant_hours = next_vacant_hours
+        if abs(vacant_hours - next_vacant_hours) < 0.01:
+            correct_flag = True
+            break
+
+    if correct_flag is True:
+        unit_revenue = passenger_demand * 0.8 * 20 / vehicle_hours
+        return passenger_demand, unit_revenue
+
+    left_hour = 0.001
+    right_hour = vehicle_hours
+    while 1:
+        mid_hour = (left_hour + right_hour) / 2
+        waiting_time = get_waiting_time(mid_hour, area=area, nu_b=avg_speed)
+        passenger_demand = passenger_demand_function(travel_demand, passenger_demand_elastic,
+                                                     travel_fare, waiting_time, waiting_time_weight)
+        mid_val = vehicle_hours - passenger_demand * average_trip_duration
+
+        if abs(mid_val) < 0.001:
+            break
+        if mid_val > 0:
+            left_hour = mid_hour
+        else:
+            right_hour = mid_hour
+    unit_revenue = passenger_demand * 0.8 * 20 / vehicle_hours
+    return passenger_demand, unit_revenue
 
 
 def passenger_demand_illustration():
@@ -71,4 +94,6 @@ def passenger_demand_illustration():
 
 
 if __name__ == '__main__':
-    passenger_demand_illustration()
+    # passenger_demand_illustration()
+    a = get_passenger_demand(10000.0, 20.0, 526.3157894736842, 0.04, 20.0, 10000.0, 50.0)
+    print(a)

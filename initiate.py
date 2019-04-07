@@ -11,6 +11,12 @@ def initiate_network():
     network = cls.Network()
     network = load_links(network)
     network = load_drivers(network)
+
+    print("Start to prepare the integral of the demand function")
+    for link_id in network.links.keys():
+        link = network.links[link_id]
+        link.prepare_link_revenue_integral(network.get_driver_amount() + 10)
+    print("Prepare integral done!")
     return network
 
 
