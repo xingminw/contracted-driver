@@ -5,7 +5,6 @@ import model
 import numpy as np
 from initiate import initiate_network
 from scipy.optimize import minimize
-import matplotlib.pyplot as plt
 from copy import deepcopy
 
 
@@ -20,7 +19,7 @@ def equality_constraint(x, start, end, value):
 
 
 def column_generation_user_equilibrium():
-    network = initiate_network(reload=False)
+    network = initiate_network(reload=True)
     path_set_dict = {0: [[0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]],
                      1: [[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]],
                      2: [[1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]]}
@@ -49,7 +48,7 @@ def column_generation_user_equilibrium():
             break
         previous_objective_function = opt_cost_value
 
-    solution_state = model.get_solution_state(temp_path_set_dict, opt_path_flow, network)
+    solution_state = model.get_solution_state(temp_path_set_dict, opt_path_flow, network, output_figure=True)
     return solution_state
 
 

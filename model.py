@@ -143,10 +143,12 @@ def get_solution_state(path_set_dict, path_flow_list, network, output_figure=Fal
             link.get_link_passenger_demand_and_unit_revenue(link_vehicle_hours[link_id])
         base_demand_list.append(link_demand)
         realistic_demand_list.append(link_realistic_demand)
+    solution_state["base_demand"] = base_demand_list
+    solution_state["realized_demand"] = realistic_demand_list
 
     if output_figure:
         plt.figure(dpi=200, figsize=[13.5, 7.5])
-        total_width = 0.8
+        total_width = 0.9
         n = len(solution_state["vehicle_link_hours"])
         width = total_width / n
         x = np.arange(24)
@@ -162,6 +164,15 @@ def get_solution_state(path_set_dict, path_flow_list, network, output_figure=Fal
         plt.xlim([-1, 24])
         plt.legend()
         plt.savefig("data/figure/link_distribution.png")
+        plt.close()
+
+        plt.figure(dpi=200, figsize=[10, 7.5])
+        plt.plot(base_demand_list, ".-", label="Base demand")
+        plt.plot(realistic_demand_list, ".-", label="Realized demand")
+        plt.xlabel("Hour")
+        plt.ylabel("Demand (hr)")
+        plt.savefig("data/figure/realized_demand.png")
+        # plt.show()
         plt.close()
 
     return solution_state
