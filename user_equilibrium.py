@@ -3,7 +3,6 @@
 # given the constraints for the contracted driver and the bonus for the contracted driver
 import model
 import numpy as np
-from initiate import initiate_network
 from scipy.optimize import minimize
 from copy import deepcopy
 
@@ -19,6 +18,7 @@ def equality_constraint(x, start, end, value):
 
 
 def update_network_drivers(network, contracted_fracs):
+    contracted_fracs = [1 - val for val in contracted_fracs]
     for idx in range(3):
         drivers = network.drivers[idx]
         network.drivers[idx + 3] = deepcopy(drivers)
@@ -36,7 +36,7 @@ def get_initiate_path_set_and_flow(network, contracted_plan):
     path_flow_list = []
     for driver_id in network.drivers.keys():
         drivers = network.drivers[driver_id]
-        path_flow_list.append([drivers.drivers_amount])
+        path_flow_list.append(drivers.drivers_amount)
         if driver_id < mid_index:
             drivers_preference = drivers.links_preference
             average_preference = np.average(drivers_preference)
@@ -46,9 +46,9 @@ def get_initiate_path_set_and_flow(network, contracted_plan):
                     path_chosen_list.append(1)
                 else:
                     path_chosen_list.append(0)
-            path_set_dict[driver_id] = path_chosen_list
+            path_set_dict[driver_id] = [path_chosen_list]
         else:
-            path_set_dict[driver_id] = contracted_plan
+            path_set_dict[driver_id] = [contracted_plan]
     return path_set_dict, path_flow_list
 
 
@@ -61,25 +61,33 @@ def column_generation_user_equilibrium(network, contracted_plan, contracted_frac
     for idx in range(len(path_set_dict)):
         print(path_set_dict[idx])
 
-    total_paths = len(path_set_dict)
+    print("path flow distribution", init_path_flow_list)
+
     objective_value_list = []
     previous_objective_function = 0
 
-    for iter_idx in range(10):
+    for iter_idx in range(2):
         temp_path_set_dict = deepcopy(path_set_dict)
-        initiate_path_distribution = np.linspace(0, 0, total_paths)
         opt_path_flow, opt_cost_value = get_optimal_path_distribution(path_set_dict,
-                                                                      initiate_path_distribution,
+                                                                      init_path_flow_list,
                                                                       network)
         objective_value_list.append(opt_cost_value)
         link_flow_distribution = model.get_link_vehicle_hours(path_set_dict, opt_path_flow)
         optimum_path = network.get_optimum_path(link_flow_distribution, contracted_path_list)
 
         total_paths = 0
+        init_path_flow_list = []
         for driver_id in path_set_dict.keys():
             path_num = len(path_set_dict[driver_id])
             total_paths += (path_num + 1)
             path_set_dict[driver_id].append(optimum_path[driver_id])
+            local_path_flows = opt_path_flow[driver_id * path_num: driver_id * path_num + path_num]
+
+            update_proportion = 1 / pow(2, iter_idx + 2)
+            update_path_flows = [(1 - update_proportion) * val for val in local_path_flows] +\
+                                [np.sum(local_path_flows) * update_proportion]
+            init_path_flow_list += update_path_flows
+        print("new path flow", init_path_flow_list)
 
         if abs(previous_objective_function - opt_cost_value) < 0.002 * abs(opt_cost_value):
             break
@@ -92,6 +100,7 @@ def column_generation_user_equilibrium(network, contracted_plan, contracted_frac
 
 
 def get_optimal_path_distribution(path_set_dict, initiate_path, network):
+    print(path_set_dict)
     bounds_list = []
     constraints_list = []
     current_cursor = 0
@@ -106,13 +115,13 @@ def get_optimal_path_distribution(path_set_dict, initiate_path, network):
         constraints_list.append(local_constraint_dict)
         for idx in range(path_nums):
             bounds_list.append((0, drivers_num))
-    bounds_tuple = tuple(bounds_list)
+
     constraints_tuple = tuple(constraints_list)
+    print(len(initiate_path), len(bounds_list))
 
     # objective_value = get_path_distribution_cost(x, path_set_dict, network)
-    solution = minimize(get_path_distribution_cost, initiate_path, method="SLSQP",
-                        bounds=bounds_tuple, args=(path_set_dict, network),
-                        constraints=constraints_tuple)
+    solution = minimize(get_path_distribution_cost, initiate_path, method="SLSQP", args=(path_set_dict, network),
+                        bounds=bounds_list, constraints=constraints_tuple)
     print("=================")
     print(solution)
     print("=================")

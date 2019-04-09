@@ -3,7 +3,6 @@ import model
 from user_equilibrium import get_path_distribution_cost
 from initiate import initiate_network
 from user_equilibrium import column_generation_user_equilibrium
-import matplotlib.pyplot as plt
 
 
 def main():
@@ -14,18 +13,18 @@ def main():
     contracted_path = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]
     contracted_fracs = [0, 0, 0]
 
-    path_set_dict = {0: [[0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]]}
+    path_set_dict = {0: [[0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                         [1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]]}
 
     objective_function_list = []
     for idx in range(6000):
-        cost1 = get_path_distribution_cost(np.array([6000 - idx, idx]), 0, [[0]], path_set_dict, network)
+        cost1 = get_path_distribution_cost(np.array([6000 - idx, idx]), path_set_dict, network)
         objective_function_list.append(cost1)
 
     x1 = 6000 - np.argmin(objective_function_list)
     x2 = np.argmin(objective_function_list)
     print([x1, x2])
-    link_hours = model.get_link_vehicle_hours(path_set_dict, [[x1, x2]])
+    link_hours = model.get_link_vehicle_hours(path_set_dict, [x1, x2])
     print(link_hours)
     link_revenue = network.get_link_revenue_list(link_hours)
 
