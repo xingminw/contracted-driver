@@ -135,13 +135,17 @@ class Network(object):
                 total_objective_value += driver_path_cost * path_flow
         return total_objective_value
 
-    def get_optimum_path(self, link_flow, contracted_path_list):
+    def get_link_revenue_list(self, link_flow):
         link_revenue_list = []
         for idx in range(len(link_flow)):
             link = self.links[idx]
-            passenger_demand, link_revenue =\
+            passenger_demand, link_revenue = \
                 link.get_link_passenger_demand_and_unit_revenue(link_flow[idx])
             link_revenue_list.append(link_revenue)
+        return link_revenue_list
+
+    def get_optimum_path(self, link_flow, contracted_path_list):
+        link_revenue_list = self.get_link_revenue_list(link_flow)
 
         optimum_path_list = []
         for drivers_id in self.drivers.keys():

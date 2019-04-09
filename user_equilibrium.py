@@ -29,15 +29,37 @@ def update_network_drivers(network, contracted_fracs):
     return network
 
 
+def get_initiate_path_set_and_flow(network, contracted_plan):
+    path_set_dict = {}
+    mid_index = int(len(network.drivers) / 2)
+
+    path_flow_list = []
+    for driver_id in network.drivers.keys():
+        drivers = network.drivers[driver_id]
+        path_flow_list.append([drivers.drivers_amount])
+        if driver_id < mid_index:
+            drivers_preference = drivers.links_preference
+            average_preference = np.average(drivers_preference)
+            path_chosen_list = []
+            for link_pre in drivers_preference:
+                if link_pre < average_preference:
+                    path_chosen_list.append(1)
+                else:
+                    path_chosen_list.append(0)
+            path_set_dict[driver_id] = path_chosen_list
+        else:
+            path_set_dict[driver_id] = contracted_plan
+    return path_set_dict, path_flow_list
+
+
 def column_generation_user_equilibrium(network, contracted_plan, contracted_fracs):
     network = update_network_drivers(network, contracted_fracs)
 
     contracted_path_list = [None, None, None, contracted_plan, contracted_plan, contracted_plan]
 
-    path_set_dict = {0: [[0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]],
-                     1: [[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]],
-                     2: [[1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]],
-                     3: [contracted_plan], 4: [contracted_plan], 5: [contracted_plan]}
+    path_set_dict, init_path_flow_list = get_initiate_path_set_and_flow(network, contracted_plan)
+    for idx in range(len(path_set_dict)):
+        print(path_set_dict[idx])
 
     total_paths = len(path_set_dict)
     objective_value_list = []
@@ -64,7 +86,8 @@ def column_generation_user_equilibrium(network, contracted_plan, contracted_frac
         previous_objective_function = opt_cost_value
 
     solution_state = model.get_solution_state(temp_path_set_dict, opt_path_flow,
-                                              network, contracted_plan, output_figure=True)
+                                              network, contracted_plan, contracted_fracs,
+                                              output_figure=True)
     return solution_state
 
 
@@ -90,6 +113,10 @@ def get_optimal_path_distribution(path_set_dict, initiate_path, network):
     solution = minimize(get_path_distribution_cost, initiate_path, method="SLSQP",
                         bounds=bounds_tuple, args=(path_set_dict, network),
                         constraints=constraints_tuple)
+    print("=================")
+    print(solution)
+    print("=================")
+
     function_value = solution.fun
     sol_path_distribution = solution.x
     # print("The best path is", sol_path_distribution, "the objective function is", function_value)
