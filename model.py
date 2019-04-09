@@ -149,14 +149,18 @@ def get_solution_state(path_set_dict, path_flow_list, network, output_figure=Fal
     if output_figure:
         plt.figure(dpi=200, figsize=[13.5, 7.5])
         total_width = 0.9
-        n = len(solution_state["vehicle_link_hours"])
+        n = int(len(solution_state["vehicle_link_hours"]) / 2)
         width = total_width / n
         x = np.arange(24)
         x = x - (total_width - width) / 2
 
         for driver_idx in range(n):
-            plt.bar(x + driver_idx * width, [val for val in solution_state["vehicle_link_hours"][driver_idx]],
-                    width=width, label="Driver Class " + str(driver_idx))
+            local_vehicle_hours = np.array(solution_state["vehicle_link_hours"][driver_idx]) + \
+                                  np.array(solution_state["vehicle_link_hours"][driver_idx + n])
+            plt.bar(x + driver_idx * width, local_vehicle_hours,
+                    width=width, label="Driver Class " + str(driver_idx) + " (Freelance)")
+            plt.bar(x + driver_idx * width, solution_state["vehicle_link_hours"][driver_idx + n],
+                    width=width, label="Driver Class " + str(driver_idx) + " (Contracted)")
 
         plt.xlabel("Hour")
         plt.ylabel("Number of Vehicles")

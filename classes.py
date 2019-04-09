@@ -62,7 +62,7 @@ class Drivers(object):
         self.unit_time_cost = unit_time_cost
         self.unit_runs_cost = unit_runs_cost
 
-    def get_path_cost(self, path):
+    def get_path_cost(self, path, bonus=0):
         link_based = np.sum(np.array(path) * np.array(self.links_preference))
         cumulative_time = pow(float(np.sum(path)), 1.2) * self.unit_time_cost
 
@@ -78,7 +78,7 @@ class Drivers(object):
         run_cost = runs * self.unit_runs_cost
 
         total_cost = run_cost + cumulative_time + link_based
-        return total_cost
+        return total_cost - bonus
 
 
 class Network(object):
@@ -94,6 +94,8 @@ class Network(object):
     def add_driver(self, driver):
         if self.drivers is None:
             self.drivers = {}
+
+        print(driver.drivers_id)
         self.drivers[driver.drivers_id] = driver
 
     def get_driver_amount(self):
@@ -133,7 +135,7 @@ class Network(object):
                 total_objective_value += driver_path_cost * path_flow
         return total_objective_value
 
-    def get_optimum_path(self, link_flow):
+    def get_optimum_path(self, link_flow, contracted_path_list):
         link_revenue_list = []
         for idx in range(len(link_flow)):
             link = self.links[idx]
@@ -146,9 +148,16 @@ class Network(object):
             drivers = self.drivers[drivers_id]
             path_tuple = np.linspace(0, 0, 24)
 
+            contracted_path = contracted_path_list[drivers_id]
+            if contracted_path is None:
+                contracted_path = np.linspace(0, 0, 24).tolist()
+
             bounds = []
             for ibd in range(24):
-                bounds.append((0, 1))
+                if contracted_path[ibd] > 0:
+                    bounds.append((0.9, 1))
+                else:
+                    bounds.append((0, 1))
             bounds_tuple = tuple(bounds)
 
             solution = minimize(get_drivers_path_cost,
@@ -162,6 +171,7 @@ class Network(object):
                     optimum_path.append(1)
                 else:
                     optimum_path.append(0)
+
             optimum_path_list.append(optimum_path)
         return optimum_path_list
 

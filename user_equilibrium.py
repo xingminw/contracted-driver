@@ -18,11 +18,26 @@ def equality_constraint(x, start, end, value):
     return temp_val
 
 
-def column_generation_user_equilibrium():
-    network = initiate_network(reload=True)
+def update_network_drivers(network, contracted_fracs):
+    for idx in range(3):
+        drivers = network.drivers[idx]
+        network.drivers[idx + 3] = deepcopy(drivers)
+        total_drivers_amount = network.drivers[idx].drivers_amount
+        network.drivers[idx + 3].drivers_amount = np.round((1 - contracted_fracs[idx]) * total_drivers_amount)
+        network.drivers[idx].drivers_amount = np.round(contracted_fracs[idx] * total_drivers_amount)
+        network.drivers[idx + 3].drivers_id = idx + 3
+    return network
+
+
+def column_generation_user_equilibrium(network, contracted_plan, contracted_fracs):
+    network = update_network_drivers(network, contracted_fracs)
+
+    contracted_path_list = [None, None, None, contracted_plan, contracted_plan, contracted_plan]
+
     path_set_dict = {0: [[0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]],
                      1: [[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]],
-                     2: [[1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]]}
+                     2: [[1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]],
+                     3: [contracted_plan], 4: [contracted_plan], 5: [contracted_plan]}
 
     total_paths = len(path_set_dict)
     objective_value_list = []
@@ -36,7 +51,7 @@ def column_generation_user_equilibrium():
                                                                       network)
         objective_value_list.append(opt_cost_value)
         link_flow_distribution = model.get_link_vehicle_hours(path_set_dict, opt_path_flow)
-        optimum_path = network.get_optimum_path(link_flow_distribution)
+        optimum_path = network.get_optimum_path(link_flow_distribution, contracted_path_list)
 
         total_paths = 0
         for driver_id in path_set_dict.keys():
@@ -48,7 +63,8 @@ def column_generation_user_equilibrium():
             break
         previous_objective_function = opt_cost_value
 
-    solution_state = model.get_solution_state(temp_path_set_dict, opt_path_flow, network, output_figure=True)
+    solution_state = model.get_solution_state(temp_path_set_dict, opt_path_flow,
+                                              network, contracted_plan, output_figure=True)
     return solution_state
 
 
@@ -76,10 +92,6 @@ def get_optimal_path_distribution(path_set_dict, initiate_path, network):
                         constraints=constraints_tuple)
     function_value = solution.fun
     sol_path_distribution = solution.x
-    print("The best path is", sol_path_distribution, "the objective function is", function_value)
+    # print("The best path is", sol_path_distribution, "the objective function is", function_value)
     return sol_path_distribution, function_value
-
-
-if __name__ == '__main__':
-    column_generation_user_equilibrium()
 
