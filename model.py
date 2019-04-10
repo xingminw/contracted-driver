@@ -163,18 +163,15 @@ def get_solution_state(path_set_dict, path_flow_list, network,
                 local_bonus = bonus
             else:
                 local_bonus = 0
-
-            print(path)
             driver_cost = drivers.get_path_cost(path, local_bonus)
             driver_revenue = np.sum(np.array(path) * np.array(link_revenue_list))
             driver_profit = driver_revenue - driver_cost
-            print("driver cost", driver_cost, "driver revenue", driver_revenue, "driver profit", driver_profit)
             path_profit_list.append(driver_profit)
 
         driver_paths_distribution = path_flow_list[temp_index * paths_num: temp_index * paths_num + paths_num]
         temp_index += 1
-        print([int(val) for val in path_profit_list])
-        print([int(val) for val in driver_paths_distribution])
+        print("profit list", [int(val) for val in path_profit_list],
+              "volume list", [int(val) for val in driver_paths_distribution])
         print()
 
     if output_figure:

@@ -29,12 +29,13 @@ class Link(object):
 
     def get_link_revenue_integral(self, link_vehicles):
         if link_vehicles > len(self.link_revenue_integral) - 2:
-            exceed_num = link_vehicles / (len(self.link_revenue_integral)) + 0.1
-            return exceed_num * self.link_revenue_integral[-1]
+            # exceed_num = link_vehicles / (len(self.link_revenue_integral)) + 0.1
+            # return exceed_num * self.link_revenue_integral[-1]
+            return self.link_revenue_integral[-1]
         link_veh_int = int(link_vehicles)
         link_veh_frac = link_vehicles - int(link_vehicles)
         integral = self.link_revenue_integral[link_veh_int] * (1 - link_veh_frac) + self.link_revenue_integral[
-            link_veh_int] * link_veh_frac
+            link_veh_int + 1] * link_veh_frac
         return integral
 
     def prepare_link_revenue_integral(self, max_vehicle_hours=6000):
@@ -94,8 +95,6 @@ class Network(object):
     def add_driver(self, driver):
         if self.drivers is None:
             self.drivers = {}
-
-        print(driver.drivers_id)
         self.drivers[driver.drivers_id] = driver
 
     def get_driver_amount(self):
