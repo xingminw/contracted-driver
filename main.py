@@ -41,8 +41,8 @@ def main():
     #     revenue = np.sum(np.array(path) * np.array(link_revenue))
     #     profit = revenue - cost
     #     print(cost, revenue, profit)
-    contracted_path = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]
-    contracted_fracs = [0.3, 0.2, 0.0]
+    contracted_path = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+    contracted_fracs = [0.3, 0.0, 0.0]
     column_generation_user_equilibrium(network, contracted_path, contracted_fracs)
 
 

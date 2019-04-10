@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -43,7 +44,7 @@ def calculate_driver_revenue(eta, fare, demand, vehicle_hours):
 
 def get_passenger_demand(travel_demand, travel_fare, vehicle_hours,
                          passenger_demand_elastic, waiting_time_weight,
-                         area, avg_speed):
+                         area, avg_speed, charge_proportion):
     """
 
     :param travel_demand:
@@ -53,6 +54,7 @@ def get_passenger_demand(travel_demand, travel_fare, vehicle_hours,
     :param waiting_time_weight:
     :param area:
     :param avg_speed:
+    :param charge_proportion:
     :return:
     """
     # here try to get the passenger demand using the fixed point method
@@ -73,7 +75,7 @@ def get_passenger_demand(travel_demand, travel_fare, vehicle_hours,
             break
 
     if correct_flag is True:
-        unit_revenue = passenger_demand * 0.8 * 20 / vehicle_hours
+        unit_revenue = passenger_demand * (1 - charge_proportion) * travel_fare / vehicle_hours
         return passenger_demand, unit_revenue
 
     left_hour = 0.001
@@ -91,7 +93,7 @@ def get_passenger_demand(travel_demand, travel_fare, vehicle_hours,
             left_hour = mid_hour
         else:
             right_hour = mid_hour
-    unit_revenue = passenger_demand * 0.8 * 20 / vehicle_hours
+    unit_revenue = passenger_demand * (1 - charge_proportion) * travel_fare / vehicle_hours
     return passenger_demand, unit_revenue
 
 
@@ -115,7 +117,6 @@ def get_link_vehicle_hours(path_set_dict, path_flow_list):
 def get_solution_state(path_set_dict, path_flow_list, network,
                        contracted_plan, contracted_fracs, bonus=0,
                        output_figure=False):
-    print("length of path_flow_list", len(path_flow_list))
     solution_state = {}
     # get the total link flow:
     current_index = 0
@@ -139,15 +140,22 @@ def get_solution_state(path_set_dict, path_flow_list, network,
     # get base demand and realistic demand
     base_demand_list = []
     realistic_demand_list = []
+    total_platform_benefit = 0
+    total_passenger_benefit = 0
+
     for link_id in range(len(link_vehicle_hours)):
         link = network.links[link_id]
         link_demand = link.demand
+        total_passenger_benefit += link.get_link_passenger_total_benefit(link_vehicle_hours[link_id])
         link_realistic_demand, unit_revenue = \
             link.get_link_passenger_demand_and_unit_revenue(link_vehicle_hours[link_id])
         base_demand_list.append(link_demand)
+        total_platform_benefit += \
+            link_vehicle_hours[link_id] * unit_revenue * link.platform_charge / (1 - link.platform_charge)
         realistic_demand_list.append(link_realistic_demand)
     solution_state["base_demand"] = base_demand_list
     solution_state["realized_demand"] = realistic_demand_list
+    solution_state["passenger_benefits"] = total_passenger_benefit
 
     mid_value = int(len(path_set_dict) / 2) - 1
     paths_num = len(path_set_dict[0])
@@ -155,7 +163,10 @@ def get_solution_state(path_set_dict, path_flow_list, network,
 
     equilibrium_cost_list = []
     drivers_num_list = []
+    total_path_profit_list = []
+    equilibrium_path_list = []
 
+    total_driver_profit = 0
     for driver_id in path_set_dict.keys():
         path_profit_list = []
         for path in path_set_dict[driver_id]:
@@ -170,8 +181,19 @@ def get_solution_state(path_set_dict, path_flow_list, network,
             driver_profit = driver_revenue - driver_cost
             path_profit_list.append(driver_profit)
 
-        driver_paths_distribution = path_flow_list[temp_index * paths_num: temp_index * paths_num + paths_num]
-        drivers_num_list.append(np.sum(driver_paths_distribution))
+        total_path_profit_list.append(path_profit_list)
+        driver_paths_distribution = path_flow_list[temp_index * paths_num:
+                                                   temp_index * paths_num + paths_num].tolist()
+
+        local_agg_driver_benefit = np.sum(np.array(driver_paths_distribution) * np.array(path_profit_list))
+        total_driver_profit += local_agg_driver_benefit
+        local_driver_nums = np.sum(driver_paths_distribution)
+        if local_driver_nums > 0:
+            equilibrium_cost_list.append(local_agg_driver_benefit / local_driver_nums)
+        else:
+            equilibrium_cost_list.append(0)
+        equilibrium_path_list.append(driver_paths_distribution)
+        drivers_num_list.append(local_driver_nums)
 
         temp_cost_list = []
         for temp_num_idx in range(len(driver_paths_distribution)):
@@ -180,16 +202,19 @@ def get_solution_state(path_set_dict, path_flow_list, network,
 
         # print(temp_cost_list)
         if len(temp_cost_list) > 0:
-            equilibrium_cost_list.append(np.average(temp_cost_list))
-
             if np.var(temp_cost_list) > 5:
                 print("Not equilibrium!!!")
-        else:
-            equilibrium_cost_list.append(0)
         temp_index += 1
-    solution_state["equilibrium_path_flow"] = path_flow_list
+    solution_state["equilibrium_path_flow"] = equilibrium_path_list
     solution_state["drivers_distribute"] = drivers_num_list
+
+    driver_types = int(len(drivers_num_list) / 2)
+    contracted_drivers_num = drivers_num_list[driver_types: 2 * driver_types]
+
     solution_state["equilibrium_benefit"] = equilibrium_cost_list
+    solution_state["path_profit"] = total_path_profit_list
+    solution_state["driver_profits"] = total_driver_profit
+    solution_state["platform_profits"] = total_platform_benefit - np.sum(contracted_drivers_num) * bonus
 
     if output_figure:
         plt.figure(dpi=200, figsize=[13.5, 7.5])
@@ -217,13 +242,16 @@ def get_solution_state(path_set_dict, path_flow_list, network,
             if plan_val > 0:
                 plt.fill_between([plan_idx - 0.5, plan_idx + 0.5], [y_lim_max, y_lim_max], color=(0, 0, 1), alpha=0.1)
 
-        plt.text(0, 0.9 * y_lim_max, "Bonus: " + str(np.round(bonus, 2)) + "$", fontsize=14)
+        plt.text(0, 0.8 * y_lim_max, "Bonus: " + str(np.round(bonus, 2)) + "$\n"
+                 + "Platform Profits: " + str(int(total_platform_benefit / 1000)) + "k$\n"
+                 + "Drivers Profits: " + str(int(total_driver_profit / 1000)) + "k$\n", fontsize=14)
 
         plt.xlabel("Hour")
         plt.ylabel("Number of Vehicles")
         plt.ylim([0, y_lim_max])
         plt.xlim([-1, 24])
-        plt.legend()
+        plt.legend(loc='upper right')
+
         plt.xticks(np.linspace(0, 23, 24).tolist(), [str(int(val + 1)) for val in np.linspace(0, 23, 24).tolist()])
         plt.savefig("data/figure/link_distribution.png")
         plt.close()
@@ -239,6 +267,8 @@ def get_solution_state(path_set_dict, path_flow_list, network,
         plt.xticks(np.linspace(0, 23, 24).tolist(), [str(int(val + 1)) for val in np.linspace(0, 23, 24).tolist()])
         plt.close()
 
-    print(solution_state)
+        with open("data/figure/solution.json", "w") as temp_file:
+            json.dump(solution_state, temp_file)
+
     return solution_state
 

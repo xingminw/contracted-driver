@@ -7,7 +7,8 @@ class Link(object):
     def __init__(self, link_id, demand=None,
                  travel_fare=None, waiting_time_weight=None,
                  passenger_elastic=None, sharing_area=None,
-                 avg_speed=None, link_revenue_integral=None):
+                 avg_speed=None, link_revenue_integral=None,
+                 link_passenger_integral=None):
         self.link_id = link_id
         self.demand = demand
         self.travel_fare = travel_fare
@@ -16,6 +17,8 @@ class Link(object):
         self.sharing_area = sharing_area
         self.avg_speed = avg_speed
         self.link_revenue_integral = link_revenue_integral
+        self.platform_charge = 0.2
+        self.passenger_integral = link_passenger_integral
 
     def get_link_passenger_demand_and_unit_revenue(self, vehicle_hours):
         if vehicle_hours < 1:
@@ -24,7 +27,8 @@ class Link(object):
                                                                          self.travel_fare, vehicle_hours,
                                                                          self.passenger_elastic_val,
                                                                          self.waiting_time_weight,
-                                                                         self.sharing_area, self.avg_speed)
+                                                                         self.sharing_area, self.avg_speed,
+                                                                         self.platform_charge)
         return link_passenger_demand, unit_revenue
 
     def get_link_revenue_integral(self, link_vehicles):
@@ -38,20 +42,48 @@ class Link(object):
             link_veh_int + 1] * link_veh_frac
         return integral
 
+    def get_link_passenger_total_benefit(self, vehicle_hours):
+        if vehicle_hours > len(self.link_revenue_integral) - 2:
+            print("The vehicle hours exceed the normal value, Error!")
+            return self.link_revenue_integral[-1]
+        link_veh_int = int(vehicle_hours)
+        link_veh_frac = vehicle_hours - int(vehicle_hours)
+        integral = self.passenger_integral[link_veh_int] * (1 - link_veh_frac) + self.passenger_integral[
+            link_veh_int + 1] * link_veh_frac
+        return integral
+
     def prepare_link_revenue_integral(self, max_vehicle_hours=6000):
         vehicle_hours = np.linspace(0, max_vehicle_hours, int(max_vehicle_hours) + 1).tolist()[1:]
         unit_revenues = []
+        passenger_demand_list = []
         for vehicle_hour in vehicle_hours:
             passenger_demand, unit_revenue = self.get_link_passenger_demand_and_unit_revenue(vehicle_hour)
             unit_revenues.append(unit_revenue)
+            passenger_demand_list.append(passenger_demand)
 
         length = len(vehicle_hours)
         integral_list = []
+        passenger_integral_list = []
         for idx in range(length + 1):
             local_unit_revenue = unit_revenues[0: idx]
+            local_passenger_list = passenger_demand_list[0: idx]
             local_integral = np.sum(local_unit_revenue)
+            passenger_integral_list.append(np.sum(local_passenger_list))
             integral_list.append(local_integral)
         self.link_revenue_integral = integral_list
+        self.passenger_integral = passenger_integral_list
+
+    def get_platform_link_revenue(self, vehicle_hours):
+        if vehicle_hours < 1:
+            vehicle_hours = 1
+        link_passenger_demand, unit_revenue = model.get_passenger_demand(self.demand,
+                                                                         self.travel_fare, vehicle_hours,
+                                                                         self.passenger_elastic_val,
+                                                                         self.waiting_time_weight,
+                                                                         self.sharing_area, self.avg_speed,
+                                                                         self.platform_charge)
+        platform_benefit = vehicle_hours * unit_revenue / (1 - self.platform_charge) * self.platform_charge
+        return platform_benefit
 
 
 class Drivers(object):
