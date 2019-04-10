@@ -135,8 +135,6 @@ def get_solution_state(path_set_dict, path_flow_list, network,
     solution_state["total_link_hours"] = link_vehicle_hours.tolist()
     solution_state["vehicle_link_hours"] = drivers_vehicle_hours_list
     link_revenue_list = network.get_link_revenue_list(solution_state["total_link_hours"])
-    print("Link revenue list", link_revenue_list)
-    print("Link vehicle hours", solution_state["total_link_hours"])
 
     # get base demand and realistic demand
     base_demand_list = []
@@ -154,6 +152,10 @@ def get_solution_state(path_set_dict, path_flow_list, network,
     mid_value = int(len(path_set_dict) / 2) - 1
     paths_num = len(path_set_dict[0])
     temp_index = 0
+
+    equilibrium_cost_list = []
+    drivers_num_list = []
+
     for driver_id in path_set_dict.keys():
         path_profit_list = []
         for path in path_set_dict[driver_id]:
@@ -169,10 +171,25 @@ def get_solution_state(path_set_dict, path_flow_list, network,
             path_profit_list.append(driver_profit)
 
         driver_paths_distribution = path_flow_list[temp_index * paths_num: temp_index * paths_num + paths_num]
+        drivers_num_list.append(np.sum(driver_paths_distribution))
+
+        temp_cost_list = []
+        for temp_num_idx in range(len(driver_paths_distribution)):
+            if driver_paths_distribution[temp_num_idx] > 1:
+                temp_cost_list.append(path_profit_list[temp_num_idx])
+
+        # print(temp_cost_list)
+        if len(temp_cost_list) > 0:
+            equilibrium_cost_list.append(np.average(temp_cost_list))
+
+            if np.var(temp_cost_list) > 5:
+                print("Not equilibrium!!!")
+        else:
+            equilibrium_cost_list.append(0)
         temp_index += 1
-        print("profit list", [int(val) for val in path_profit_list],
-              "volume list", [int(val) for val in driver_paths_distribution])
-        print()
+    solution_state["equilibrium_path_flow"] = path_flow_list
+    solution_state["drivers_distribute"] = drivers_num_list
+    solution_state["equilibrium_benefit"] = equilibrium_cost_list
 
     if output_figure:
         plt.figure(dpi=200, figsize=[13.5, 7.5])
@@ -222,5 +239,6 @@ def get_solution_state(path_set_dict, path_flow_list, network,
         plt.xticks(np.linspace(0, 23, 24).tolist(), [str(int(val + 1)) for val in np.linspace(0, 23, 24).tolist()])
         plt.close()
 
+    print(solution_state)
     return solution_state
 

@@ -59,10 +59,6 @@ def column_generation_user_equilibrium(network, contracted_plan, contracted_frac
     contracted_path_list = [None, None, None, contracted_plan, contracted_plan, contracted_plan]
 
     path_set_dict, init_path_flow_list = get_initiate_path_set_and_flow(network, contracted_plan)
-    for idx in range(len(path_set_dict)):
-        print(path_set_dict[idx])
-
-    print("path flow distribution", init_path_flow_list)
 
     objective_value_list = []
     previous_objective_function = 0
@@ -88,7 +84,6 @@ def column_generation_user_equilibrium(network, contracted_plan, contracted_frac
             update_path_flows = [(1 - update_proportion) * val for val in local_path_flows] +\
                                 [np.sum(local_path_flows) * update_proportion]
             init_path_flow_list += update_path_flows
-        print("new path flow", init_path_flow_list)
 
         if abs(previous_objective_function - opt_cost_value) < 0.002 * abs(opt_cost_value):
             break
@@ -117,15 +112,10 @@ def get_optimal_path_distribution(path_set_dict, initiate_path, network):
             bounds_list.append((0, drivers_num))
 
     constraints_tuple = tuple(constraints_list)
-    print(len(initiate_path), len(bounds_list))
 
     # objective_value = get_path_distribution_cost(x, path_set_dict, network)
     solution = minimize(get_path_distribution_cost, initiate_path, method="SLSQP", args=(path_set_dict, network),
                         bounds=bounds_list, constraints=constraints_tuple, options={"maxiter": 1000})
-    print("=================")
-    print(solution)
-    print("=================")
-
     function_value = solution.fun
     sol_path_distribution = solution.x
     # print("The best path is", sol_path_distribution, "the objective function is", function_value)
