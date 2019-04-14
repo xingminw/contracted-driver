@@ -2,9 +2,37 @@
 # Use the nonlinear programming package in scipy.optimize
 # given the constraints for the contracted driver and the bonus for the contracted driver
 import model
+import time
 import numpy as np
 from scipy.optimize import minimize
 from copy import deepcopy
+
+
+def get_lower_level_solution(network, contracted_path, bonus, init_fracs):
+    solution = None
+    solution_success = False
+    contracted_fracs = deepcopy(init_fracs)
+    start_time = time.time()
+    for iteration in range(20):
+        solution = column_generation_user_equilibrium(network, contracted_path, contracted_fracs, bonus)
+        temp_ans = solution["contract_profit_ratio"]
+
+        difference_norm = np.linalg.norm(np.array(contracted_fracs) - np.array(temp_ans))
+
+        if difference_norm < 0.05:
+            solution_success = True
+            end_time = time.time()
+            print("Get converged solution, total time cost:", end_time - start_time)
+            break
+
+        update_ans = np.array(contracted_fracs) + (np.array(temp_ans) - np.array(contracted_fracs)) / (iteration + 1)
+        contracted_fracs = update_ans.tolist()
+        print(contracted_fracs, difference_norm)
+
+    if not solution_success:
+        end_time = time.time()
+        print("Solution not converge! time cost:", end_time - start_time)
+    return solution
 
 
 def get_path_distribution_cost(x, path_set_dict, network):
@@ -18,16 +46,19 @@ def equality_constraint(x, start, end, value):
 
 
 def update_network_drivers(network, contracted_fracs):
+    new_network = deepcopy(network)
     contracted_fracs = [1 - val for val in contracted_fracs]
-    drivers_num = len(network.drivers)
+    drivers_num = len(new_network.drivers)
+
     for idx in range(drivers_num):
-        drivers = network.drivers[idx]
-        network.drivers[idx + drivers_num] = deepcopy(drivers)
-        total_drivers_amount = network.drivers[idx].drivers_amount
-        network.drivers[idx + drivers_num].drivers_amount = np.round((1 - contracted_fracs[idx]) * total_drivers_amount)
-        network.drivers[idx].drivers_amount = np.round(contracted_fracs[idx] * total_drivers_amount)
-        network.drivers[idx + drivers_num].drivers_id = idx + drivers_num
-    return network
+        drivers = new_network.drivers[idx]
+        new_network.drivers[idx + drivers_num] = deepcopy(drivers)
+        total_drivers_amount = new_network.drivers[idx].drivers_amount
+        new_network.drivers[idx + drivers_num].drivers_amount = \
+            np.round((1 - contracted_fracs[idx]) * total_drivers_amount)
+        new_network.drivers[idx].drivers_amount = np.round(contracted_fracs[idx] * total_drivers_amount)
+        new_network.drivers[idx + drivers_num].drivers_id = idx + drivers_num
+    return new_network
 
 
 def get_initiate_path_set_and_flow(network, contracted_plan):
@@ -53,7 +84,7 @@ def get_initiate_path_set_and_flow(network, contracted_plan):
     return path_set_dict, path_flow_list
 
 
-def column_generation_user_equilibrium(network, contracted_plan, contracted_fracs):
+def column_generation_user_equilibrium(network, contracted_plan, contracted_fracs, bonus):
     network = update_network_drivers(network, contracted_fracs)
 
     contracted_path_list = [None, None, None, contracted_plan, contracted_plan, contracted_plan]
@@ -85,12 +116,12 @@ def column_generation_user_equilibrium(network, contracted_plan, contracted_frac
                                 [np.sum(local_path_flows) * update_proportion]
             init_path_flow_list += update_path_flows
 
-        if abs(previous_objective_function - opt_cost_value) < 0.002 * abs(opt_cost_value):
+        if abs(previous_objective_function - opt_cost_value) < 0.0005 * abs(opt_cost_value):
             break
         previous_objective_function = opt_cost_value
 
     solution_state = model.get_solution_state(temp_path_set_dict, opt_path_flow,
-                                              network, contracted_plan, contracted_fracs,
+                                              network, contracted_plan, contracted_fracs, bonus=bonus,
                                               output_figure=True)
     return solution_state
 

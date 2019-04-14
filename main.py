@@ -1,5 +1,9 @@
 from initiate import initiate_network
-from user_equilibrium import column_generation_user_equilibrium
+from user_equilibrium import get_lower_level_solution
+import time
+import matplotlib.pyplot as plt
+import numpy as np
+from tqdm import tqdm
 
 
 def main():
@@ -8,42 +12,47 @@ def main():
     #
     # for link_id in network.links.keys():
     #     link = network.links[link_id]
-    #
-    #     vehicle_hours = np.linspace(6000, 6001, 10).tolist()
-    #     cost_list = []
-    #     for vehicle_hour in vehicle_hours:
-    #         cost_list.append(link.get_link_revenue_integral(vehicle_hour))
-    #
-    #     cost_list = [- val for val in cost_list]
+    #     vehicle_hours = np.linspace(0, 10000, 10000)
+    #     passenger_demand_list = []
+    #     unit_revenue_list = []
+    #     for veh_hr in tqdm(vehicle_hours):
+    #         link_demand, unit_revenue = link.get_link_passenger_demand_and_unit_revenue(veh_hr)
+    #         passenger_demand_list.append(link_demand)
+    #         unit_revenue_list.append(unit_revenue)
     #     plt.figure()
-    #     plt.plot(vehicle_hours, cost_list, ".-")
-    #     # plt.ylim([None, 0])
+    #     plt.plot([0, 10000], [link.demand, link.demand], "k--")
+    #     plt.plot(vehicle_hours, passenger_demand_list, ".-")
+    #     plt.title("Link" + str(link_id))
     #     plt.show()
-    # get the user equilibrium using column generation
-    # path_set_dict = {0: [[0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
-    #                      [1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]]}
+    #     plt.close()
     #
-    # objective_function_list = []
-    # for idx in range(6000):
-    #     cost1 = get_path_distribution_cost(np.array([6000 - idx, idx]), path_set_dict, network)
-    #     objective_function_list.append(cost1)
+    #     plt.figure()
+    #     plt.plot(vehicle_hours, unit_revenue_list, ".-")
+    #     plt.title("Link" + str(link_id))
+    #     plt.show()
+    #     plt.close()
     #
-    # x1 = 6000 - np.argmin(objective_function_list)
-    # x2 = np.argmin(objective_function_list)
-    # print([x1, x2])
-    # link_hours = model.get_link_vehicle_hours(path_set_dict, [x1, x2])
-    # print(link_hours)
-    # link_revenue = network.get_link_revenue_list(link_hours)
-    #
-    # for path in path_set_dict[0]:
-    #     drivers = network.drivers[0]
-    #     cost = drivers.get_path_cost(path)
-    #     revenue = np.sum(np.array(path) * np.array(link_revenue))
-    #     profit = revenue - cost
-    #     print(cost, revenue, profit)
-    contracted_path = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]
-    contracted_fracs = [0.3, 0.0, 0.0]
-    column_generation_user_equilibrium(network, contracted_path, contracted_fracs)
+    # exit()
+
+    # contracted_path = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0]
+    # contracted_fracs = [0.3, 0.0, 0.0]
+    # solution1 = column_generation_user_equilibrium(network, contracted_path, contracted_fracs)
+
+    contracted_path = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0]
+    # contracted_path = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
+    contracted_fracs = [0.3, 0.3, 0.3]
+    bonus_list = [0, 5, 10, 12, 15, 18, 20]
+    platform_benefit_list = []
+
+    for bonus in bonus_list:
+        solution = get_lower_level_solution(network, contracted_path, bonus, contracted_fracs)
+        platform_benefit_list.append(solution["platform_profits"])
+
+    plt.figure()
+    plt.plot(bonus_list, platform_benefit_list, ".-")
+    plt.xlabel("Additional bonus for the contraction ($)")
+    plt.ylabel("Platform benefit ($)")
+    plt.show()
 
 
 if __name__ == '__main__':

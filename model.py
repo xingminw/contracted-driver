@@ -29,19 +29,6 @@ def get_waiting_time(vacant_hours, area, nu_b):
     return waiting_time
 
 
-def calculate_driver_revenue(eta, fare, demand, vehicle_hours):
-    """
-
-    :param eta:
-    :param fare:
-    :param demand:
-    :param vehicle_hours:
-    :return:
-    """
-    revenue = (1 - eta) * fare * demand / vehicle_hours
-    return revenue
-
-
 def get_passenger_demand(travel_demand, travel_fare, vehicle_hours,
                          passenger_demand_elastic, waiting_time_weight,
                          area, avg_speed, charge_proportion):
@@ -58,25 +45,7 @@ def get_passenger_demand(travel_demand, travel_fare, vehicle_hours,
     :return:
     """
     # here try to get the passenger demand using the fixed point method
-    average_trip_duration = 0.15
-    vacant_hours = vehicle_hours
-
-    while 1:
-        waiting_time = get_waiting_time(vacant_hours, area=area, nu_b=avg_speed)
-        passenger_demand = passenger_demand_function(travel_demand, passenger_demand_elastic,
-                                                     travel_fare, waiting_time, waiting_time_weight)
-        next_vacant_hours = vehicle_hours - passenger_demand * average_trip_duration
-        if next_vacant_hours < 0:
-            correct_flag = False
-            break
-        vacant_hours = next_vacant_hours
-        if abs(vacant_hours - next_vacant_hours) < 0.01:
-            correct_flag = True
-            break
-
-    if correct_flag is True:
-        unit_revenue = passenger_demand * (1 - charge_proportion) * travel_fare / vehicle_hours
-        return passenger_demand, unit_revenue
+    average_trip_duration = 0.25
 
     left_hour = 0.001
     right_hour = vehicle_hours
@@ -85,7 +54,7 @@ def get_passenger_demand(travel_demand, travel_fare, vehicle_hours,
         waiting_time = get_waiting_time(mid_hour, area=area, nu_b=avg_speed)
         passenger_demand = passenger_demand_function(travel_demand, passenger_demand_elastic,
                                                      travel_fare, waiting_time, waiting_time_weight)
-        mid_val = vehicle_hours - passenger_demand * average_trip_duration
+        mid_val = vehicle_hours - passenger_demand * average_trip_duration - mid_hour
 
         if abs(mid_val) < 0.001:
             break
@@ -145,7 +114,7 @@ def get_solution_state(path_set_dict, path_flow_list, network,
 
     for link_id in range(len(link_vehicle_hours)):
         link = network.links[link_id]
-        link_demand = link.demand
+        link_demand = link.get_link_base_demand()
         total_passenger_benefit += link.get_link_passenger_total_benefit(link_vehicle_hours[link_id])
         link_realistic_demand, unit_revenue = \
             link.get_link_passenger_demand_and_unit_revenue(link_vehicle_hours[link_id])
@@ -155,7 +124,7 @@ def get_solution_state(path_set_dict, path_flow_list, network,
         realistic_demand_list.append(link_realistic_demand)
     solution_state["base_demand"] = base_demand_list
     solution_state["realized_demand"] = realistic_demand_list
-    solution_state["passenger_benefits"] = total_passenger_benefit
+    # solution_state["passenger_benefits"] = total_passenger_benefit
 
     mid_value = int(len(path_set_dict) / 2) - 1
     paths_num = len(path_set_dict[0])
@@ -212,6 +181,17 @@ def get_solution_state(path_set_dict, path_flow_list, network,
     contracted_drivers_num = drivers_num_list[driver_types: 2 * driver_types]
 
     solution_state["equilibrium_benefit"] = equilibrium_cost_list
+
+    user_num = int(len(equilibrium_cost_list) / 2)
+    lambda_const = 0.1
+    bonus_benchmark = 25
+    contract_profit_ratio_list = []
+    for temp_id in range(user_num):
+        contract_val = np.exp(lambda_const * equilibrium_cost_list[temp_id + user_num]) * bonus / bonus_benchmark
+        freelance_val = np.exp(lambda_const * equilibrium_cost_list[temp_id])
+        contract_profit_ratio_list.append(contract_val / (contract_val + freelance_val))
+
+    solution_state["contract_profit_ratio"] = contract_profit_ratio_list
     solution_state["path_profit"] = total_path_profit_list
     solution_state["driver_profits"] = total_driver_profit
     solution_state["platform_profits"] = total_platform_benefit - np.sum(contracted_drivers_num) * bonus
@@ -243,7 +223,7 @@ def get_solution_state(path_set_dict, path_flow_list, network,
                 plt.fill_between([plan_idx - 0.5, plan_idx + 0.5], [y_lim_max, y_lim_max], color=(0, 0, 1), alpha=0.1)
 
         plt.text(0, 0.8 * y_lim_max, "Bonus: " + str(np.round(bonus, 2)) + "$\n"
-                 + "Platform Profits: " + str(int(total_platform_benefit / 1000)) + "k$\n"
+                 + "Platform Profits: " + str(int(solution_state["platform_profits"] / 1000)) + "k$\n"
                  + "Drivers Profits: " + str(int(total_driver_profit / 1000)) + "k$\n", fontsize=14)
 
         plt.xlabel("Hour")
@@ -271,4 +251,8 @@ def get_solution_state(path_set_dict, path_flow_list, network,
             json.dump(solution_state, temp_file)
 
     return solution_state
+
+
+if __name__ == '__main__':
+    pass
 

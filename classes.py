@@ -20,9 +20,14 @@ class Link(object):
         self.platform_charge = 0.2
         self.passenger_integral = link_passenger_integral
 
+    def get_link_base_demand(self):
+        base_demand = model.passenger_demand_function(self.demand, self.passenger_elastic_val,
+                                                      self.travel_fare, 0, 0)
+        return base_demand
+
     def get_link_passenger_demand_and_unit_revenue(self, vehicle_hours):
-        if vehicle_hours < 1:
-            vehicle_hours = 1
+        if vehicle_hours < 10:
+            vehicle_hours = 10
         link_passenger_demand, unit_revenue = model.get_passenger_demand(self.demand,
                                                                          self.travel_fare, vehicle_hours,
                                                                          self.passenger_elastic_val,
@@ -97,7 +102,7 @@ class Drivers(object):
 
     def get_path_cost(self, path, bonus=0):
         link_based = np.sum(np.array(path) * np.array(self.links_preference))
-        cumulative_time = pow(float(np.sum(path)), 1.2) * self.unit_time_cost
+        cumulative_time = pow(float(np.sum(path)), 1.5) * self.unit_time_cost
 
         # count runs
         runs = 0
