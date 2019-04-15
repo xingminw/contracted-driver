@@ -87,6 +87,7 @@ def get_solution_state(path_set_dict, path_flow_list, network,
                        contracted_plan, contracted_fracs, bonus=0,
                        output_figure=False):
     solution_state = {}
+    solution_state["contraction_plan"] = contracted_plan
     # get the total link flow:
     current_index = 0
     link_vehicle_hours = np.linspace(0, 0, 24)
@@ -142,7 +143,7 @@ def get_solution_state(path_set_dict, path_flow_list, network,
             drivers = network.drivers[driver_id]
 
             if driver_id > mid_value:
-                local_bonus = bonus
+                local_bonus = bonus - 5 - 5 * pow(float(np.sum(contracted_plan)), 0.5)
             else:
                 local_bonus = 0
             driver_cost = drivers.get_path_cost(path, local_bonus)
@@ -183,11 +184,12 @@ def get_solution_state(path_set_dict, path_flow_list, network,
     solution_state["equilibrium_benefit"] = equilibrium_cost_list
 
     user_num = int(len(equilibrium_cost_list) / 2)
-    lambda_const = 0.1
-    bonus_benchmark = 25
+    lambda_const = 0.2
+    # bonus_benchmark = 30
     contract_profit_ratio_list = []
     for temp_id in range(user_num):
-        contract_val = np.exp(lambda_const * equilibrium_cost_list[temp_id + user_num]) * bonus / bonus_benchmark
+        contract_val = \
+            np.exp(lambda_const * equilibrium_cost_list[temp_id + user_num])
         freelance_val = np.exp(lambda_const * equilibrium_cost_list[temp_id])
         contract_profit_ratio_list.append(contract_val / (contract_val + freelance_val))
 

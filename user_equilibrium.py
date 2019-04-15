@@ -22,10 +22,13 @@ def get_lower_level_solution(network, contracted_path, bonus, init_fracs):
         if difference_norm < 0.05:
             solution_success = True
             end_time = time.time()
-            print("Get converged solution, total time cost:", end_time - start_time)
+            print("Get converged solution, total time cost:",
+                  end_time - start_time, "difference norm", difference_norm,
+                  "best fracs", contracted_fracs)
             break
 
-        update_ans = np.array(contracted_fracs) + (np.array(temp_ans) - np.array(contracted_fracs)) / (iteration + 1)
+        update_ans = np.array(contracted_fracs) + (np.array(temp_ans) -
+                                                   np.array(contracted_fracs)) / (iteration + 1)
         contracted_fracs = update_ans.tolist()
         print(contracted_fracs, difference_norm)
 
