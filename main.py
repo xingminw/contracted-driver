@@ -6,7 +6,7 @@ import numpy as np
 
 def main():
     # load the network
-    network = initiate_network(reload=True)
+    network = initiate_network(reload=False)
 
     # plt.figure()
     # for driver_id in network.drivers.keys():
@@ -23,8 +23,17 @@ def main():
     # plt.show()
     # exit()
 
-    contracted_path = [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]
+    contracted_path = [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+    # contracted_path = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     base_solution = get_lower_level_solution(network, contracted_path, 0, [0.0, 0.0, 0.0])
+    # exit()
+    # plt.figure()
+    # plt.plot(base_solution["demand_elasticity"], ".-")
+    # plt.xlim([-0.5, 23.5])
+    # plt.ylabel("Ela ($)")
+    # plt.xlabel("Hour")
+    # plt.show()
+    # exit()
 
     # base_demand = base_solution["base_demand"]
     # plt.figure()
@@ -36,20 +45,52 @@ def main():
     # plt.show()
     # exit()
 
-    contracted_fracs = [0, 0, 0.3]
-    bonus_list = [0, 15, 20, 30, 45, 50]
-    # bonus_list = [0]
+    contracted_fracs = [0.0, 0.0, 0.3]
+    # bonus_list = [30]
+    bonus_list = [36, 38, 40, 42]
     platform_benefit_list = []
+    platform_revenue_list = []
+    realized_demand_list = []
+    contracted_driver_fracs = [[], [], []]
 
     for bonus in bonus_list:
         solution = get_lower_level_solution(network, contracted_path, bonus, contracted_fracs)
         platform_benefit_list.append(solution["platform_profits"])
+        platform_revenue_list.append(solution["platform_revenue"])
+        realized_demand_list.append(solution["realized_demand"])
+        ratio_list = solution["contract_profit_ratio"]
+        contracted_driver_fracs[0].append(ratio_list[0])
+        contracted_driver_fracs[1].append(ratio_list[1])
+        contracted_driver_fracs[2].append(ratio_list[2])
 
     plt.figure()
-    plt.plot([0], [base_solution["platform_profits"]], "b.")
-    plt.plot(bonus_list, platform_benefit_list, ".-")
+    for idx in range(len(contracted_driver_fracs)):
+        plt.plot(bonus_list, contracted_driver_fracs[idx], ".-", label="Driver Class " + str(idx))
+
+    plt.xlabel("Bonus ($)")
+    plt.ylabel("Proportion of Contract Driver")
+    plt.legend()
+    plt.show()
+
+    plt.figure()
+    # plt.plot([0], [base_solution["platform_profits"]], "b.")
+    plt.plot(bonus_list, [val / 1000 for val in platform_revenue_list], ".-", label="Platform Revenue")
+    plt.plot(bonus_list, [val / 1000 for val in platform_benefit_list], ".-", label="Platform Profit")
     plt.xlabel("Additional bonus for the contraction ($)")
-    plt.ylabel("Platform benefit ($)")
+    plt.ylabel("Platform benefit (k$)")
+    plt.legend()
+    plt.show()
+
+    plt.figure()
+    plt.plot(base_solution["base_demand"], label="Base demand")
+    for idx in range(len(bonus_list))[::2]:
+        bonus_val = bonus_list[idx]
+        plt.plot(realized_demand_list[idx], ".-", label="Bonus=" + str(bonus_val) + "$")
+    plt.ylabel("Passenger demand (# of trips)")
+    plt.xlabel("Hour")
+    plt.xticks(np.linspace(0, 23, 24), [str(int(val + 1)) for val in np.linspace(0, 23, 24)])
+    plt.xlim([-0.5, 23.5])
+    plt.legend()
     plt.show()
 
 

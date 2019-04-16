@@ -110,6 +110,7 @@ def get_solution_state(path_set_dict, path_flow_list, network,
     # get base demand and realistic demand
     base_demand_list = []
     realistic_demand_list = []
+    demand_elastic_list = []
     total_platform_benefit = 0
     total_passenger_benefit = 0
 
@@ -119,10 +120,17 @@ def get_solution_state(path_set_dict, path_flow_list, network,
         total_passenger_benefit += link.get_link_passenger_total_benefit(link_vehicle_hours[link_id])
         link_realistic_demand, unit_revenue = \
             link.get_link_passenger_demand_and_unit_revenue(link_vehicle_hours[link_id])
+        inc_link_realistic_demand, inc_unit_revenue = \
+            link.get_link_passenger_demand_and_unit_revenue(link_vehicle_hours[link_id] + 1)
+        demand_elastic_list.append((inc_link_realistic_demand - link_realistic_demand) *
+                                   link_vehicle_hours[link_id] / link_realistic_demand)
+
         base_demand_list.append(link_demand)
         total_platform_benefit += \
             link_vehicle_hours[link_id] * unit_revenue * link.platform_charge / (1 - link.platform_charge)
         realistic_demand_list.append(link_realistic_demand)
+
+    solution_state["demand_elasticity"] = demand_elastic_list
     solution_state["base_demand"] = base_demand_list
     solution_state["realized_demand"] = realistic_demand_list
     # solution_state["passenger_benefits"] = total_passenger_benefit
@@ -134,11 +142,15 @@ def get_solution_state(path_set_dict, path_flow_list, network,
     equilibrium_cost_list = []
     drivers_num_list = []
     total_path_profit_list = []
+    total_path_revenue_list = []
+    total_path_cost_list = []
     equilibrium_path_list = []
 
     total_driver_profit = 0
     for driver_id in path_set_dict.keys():
         path_profit_list = []
+        path_revenue_list = []
+        path_cost_list = []
         for path in path_set_dict[driver_id]:
             drivers = network.drivers[driver_id]
 
@@ -150,8 +162,12 @@ def get_solution_state(path_set_dict, path_flow_list, network,
             driver_revenue = np.sum(np.array(path) * np.array(link_revenue_list))
             driver_profit = driver_revenue - driver_cost
             path_profit_list.append(driver_profit)
+            path_revenue_list.append(driver_revenue)
+            path_cost_list.append(driver_cost)
 
         total_path_profit_list.append(path_profit_list)
+        total_path_cost_list.append(path_cost_list)
+        total_path_revenue_list.append(path_revenue_list)
         driver_paths_distribution = path_flow_list[temp_index * paths_num:
                                                    temp_index * paths_num + paths_num].tolist()
 
@@ -195,7 +211,10 @@ def get_solution_state(path_set_dict, path_flow_list, network,
 
     solution_state["contract_profit_ratio"] = contract_profit_ratio_list
     solution_state["path_profit"] = total_path_profit_list
+    solution_state["path_revenue"] = total_path_revenue_list
+    solution_state["path_cost"] = total_path_cost_list
     solution_state["driver_profits"] = total_driver_profit
+    solution_state["platform_revenue"] = total_platform_benefit
     solution_state["platform_profits"] = total_platform_benefit - np.sum(contracted_drivers_num) * bonus
 
     if output_figure:
@@ -238,15 +257,16 @@ def get_solution_state(path_set_dict, path_flow_list, network,
         plt.savefig("data/figure/link_distribution.png")
         plt.close()
 
-        plt.figure(dpi=200, figsize=[10, 6])
+        plt.figure(dpi=200, figsize=[10, 5.5])
         plt.plot(base_demand_list, ".-", label="Base demand")
         plt.plot(realistic_demand_list, ".-", label="Realized demand")
         plt.xlabel("Hour")
         plt.ylabel("Demand (hr)")
-        plt.savefig("data/figure/realized_demand.png")
+
         plt.xlim([-1, 24])
         plt.legend()
         plt.xticks(np.linspace(0, 23, 24).tolist(), [str(int(val + 1)) for val in np.linspace(0, 23, 24).tolist()])
+        plt.savefig("data/figure/realized_demand.png")
         plt.close()
 
         with open("data/figure/solution.json", "w") as temp_file:
